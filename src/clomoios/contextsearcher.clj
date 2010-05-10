@@ -1,12 +1,8 @@
 (ns clomoios.contextsearcher
-  (:use [clomoios.core])
   (:use [clojure.contrib.math :only [abs]])
   (:use [clojure.contrib.seq-utils :only [indexed]])
   (:require [opennlp.nlp :as nlp])
   (:require [opennlp.tools.filters :as nlpf]))
-
-
-(defrecord ContextSearcher [get-sentences tokenize pos-tag])
 
 
 (defn- mindist
@@ -51,7 +47,6 @@
     (boolean (some #{term} tokens))))
 
 
-; FIXME - refs
 (defn- get-matching-sentences
   "Given a sequence of sentences, return the sentences containing
   the term."
@@ -76,17 +71,13 @@
   "Given a sequence of weighted sentences, return a map of new terms
   to be used for searching."
   [weighted-sentences]
-  (into {}
-        (reduce conj
-                (reduce conj
-                        (map #(filter (fn [pair] (not= 0 (second pair))) %)
-                             weighted-sentences)))))
+  (into {} (map vec (partition 2 (flatten (map #(filter (fn [pair] (not= 0 (second pair))) %) weighted-sentences))))))
 
 
 (defn- get-scored-terms
   "Given a block of text and a search term, return a map of new search
   terms as keys with weighted score values."
-  [text term sentence-finder pos-tagger tokenizer]
+  [text term sentence-finder tokenizer pos-tagger]
   (let [sentences (sentence-finder text)
         matched-sentences (get-matching-sentences sentences term tokenizer)
         tagged-sentences (get-tagged-sentences matched-sentences pos-tagger tokenizer)
@@ -119,10 +110,31 @@
     (reduce + (map #(score-sentence % score-words tokenizer) sentences))))
 
 
+(defprotocol Searcher
+  "An interface for searching"
+  (score  [this term text] "Score this text in similarity")
+  (rank   [this term text] "Rank sentences in this text"))
+
+
+(defrecord ContextSearcher [get-sentences tokenize pos-tag])
 
 (extend-protocol Searcher ContextSearcher
-  (score [this] nil)
-  (rank  [this] nil))
+
+  (score
+    [this term text]
+    (let [get-sentences (:get-sentences this)
+          tokenizer (:tokenize this)
+          pos-tagger (:pos-tag this)
+          score-words (get-scored-terms text term get-sentences tokenizer pos-tagger)]
+      (score-text text score-words get-sentences tokenizer)))
+
+  (rank
+    [this term text]
+    (let [get-sentences (:get-sentences this)
+          tokenizer (:tokenize this)
+          pos-tagger (:pos-tag this)
+          score-words (get-scored-terms text term get-sentences tokenizer pos-tagger)]
+      (reverse (sort-by second (score-sentences text score-words get-sentences tokenizer))))))
 
 
 (defn make-context-searcher
@@ -136,14 +148,13 @@
     (ContextSearcher. get-sentences tokenizer pos-tagger)))
 
 
-; Test
-(comment
-
-  (def cs (make-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz"))
-
-  (def get-sentences (make-sentence-detector "models/EnglishSD.bin.gz"))
-  (def tokenize (make-tokenizer "models/EnglishTok.bin.gz"))
-  (def pos-tag (make-pos-tagger "models/tag.bin.gz"))
-
-  )
+;(def cs (make-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz"))
+;(println (score cs "foo" "This is a sentence foo is in. In this one foo goes fishing with Tom."))
+;(println (rank cs "foo" "This is a sentence foo is in. In this one foo goes fishing with Tom."))
+;(println "---------------------")
+;(println (score cs "foo" "This is a sentence foo is in."))
+;(println (rank cs "foo" "This is a sentence foo is in."))
+;(println "---------------------")
+;(println (score cs "foo" "This is a sentence bar is in."))
+;(println (rank cs "foo" "This is a sentence bar is in."))
 

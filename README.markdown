@@ -12,8 +12,8 @@ More to follow
 
 ## Installation
 
-`lein deps
-lein jar`
+    lein deps
+    lein jar
 
 Should work.
 

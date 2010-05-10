@@ -3,6 +3,11 @@
   (:require [opennlp.nlp :as nlp]))
 
 
+; Since we calculate the score-words every time, it makes sense to memoize this
+; function so it will only be re-run when the seed data has changed.
+(def memoized-get-scored-terms (memoize get-scored-terms))
+
+
 (defprotocol SeededSearcher
   "An interface for searching using seeded text"
   (add-seed [this seed]      "Add seed text to this searcher")
@@ -29,7 +34,7 @@
           pos-tagger (:pos-tag this)
           seedtexts (:seedtexts this)
           score-words (into {}
-                            (map #(core/get-scored-terms % term get-sentences tokenizer pos-tagger) @seedtexts))]
+                            (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seedtexts))]
       (core/score-text text score-words get-sentences tokenizer)))
 
   (rank
@@ -39,7 +44,7 @@
           pos-tagger (:pos-tag this)
           seedtexts (:seedtexts this)
           score-words (into {}
-                            (map #(core/get-scored-terms % term get-sentences tokenizer pos-tagger) @seedtexts))]
+                            (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seedtexts))]
       (reverse (sort-by second (core/score-sentences text score-words get-sentences tokenizer))))))
 
 
@@ -51,7 +56,7 @@
   (let [get-sentences (nlp/make-sentence-detector smodel)
         tokenizer (nlp/make-tokenizer tmodel)
         pos-tagger (nlp/make-pos-tagger pmodel)]
-    (SeededContextSearcher. (atom [seedtext]) get-sentences tokenizer pos-tagger)))
+    (SeededContextSearcher. (if (vector? seedtext) (atom seedtext) (atom [seedtext])) get-sentences tokenizer pos-tagger)))
 
 
 (comment

@@ -6,7 +6,7 @@
 
 ; Test without adding any seeds at creation time
 (deftest seeded-context-searcher-noseed-test
-         (let [scs (make-seeded-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz")] 
+         (let [scs (make-seeded-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz")]
            (is (= (score scs "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog.")
                   3/2))
            (is (= (rank scs "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog.")
@@ -20,7 +20,7 @@
 
 ; Test adding seed text at creation time
 (deftest seeded-context-searcher-seed-text-test
-         (let [scs (make-seeded-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz" {:seed-text "I have a pet fox."})] 
+         (let [scs (make-seeded-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz" {:seed-text "I have a pet fox."})]
            (is (= (score scs "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog."))
                   2)
            (is (= (rank scs "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog.")
@@ -34,7 +34,7 @@
 
 ; Test adding seed score words at creation time
 (deftest seeded-context-searcher-seed-words-test
-         (let [scs (make-seeded-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz" {:seed-words {"pet" 1}})] 
+         (let [scs (make-seeded-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz" {:seed-words {"pet" 1}})]
            (is (= (score scs "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog."))
                   5/2)
            (is (= (rank scs "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog.")

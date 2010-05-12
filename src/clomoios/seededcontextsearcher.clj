@@ -45,7 +45,6 @@
                         @seeded-score-words
                         (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text))
                         (memoized-get-scored-terms text term get-sentences tokenizer pos-tagger))]
-      (println score-words)
       (core/score-text text score-words get-sentences tokenizer)))
 
   (rank
@@ -59,7 +58,6 @@
                         @seeded-score-words
                         (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text))
                         (memoized-get-scored-terms text term get-sentences tokenizer pos-tagger))]
-      (println score-words)
       (reverse (sort-by second (core/score-sentences text score-words get-sentences tokenizer))))))
 
 

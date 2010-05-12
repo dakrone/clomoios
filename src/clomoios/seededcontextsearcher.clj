@@ -3,19 +3,21 @@
   (:require [opennlp.nlp :as nlp]))
 
 
-; Since we calculate the score-words every time, it makes sense to memoize this
-; function so it will only be re-run when the seed data has changed.
-(def memoized-get-scored-terms (memoize get-scored-terms))
+; Memoize this, since we will be getting scored terms quite often with the same
+; seeded text. This way it won't be recalculated unless the seed changes
+(def memoized-get-scored-terms (memoize core/get-scored-terms))
 
 
 (defprotocol SeededSearcher
   "An interface for searching using seeded text"
-  (add-seed [this seed]      "Add seed text to this searcher")
-  (score    [this term text] "Score this text in similarity")
-  (rank     [this term text] "Rank sentences in this text"))
+  (add-seed        [this seedtext]  "Add seed text to this searcher")
+  (add-score-words [this words]     "Add score words to this searcher")
+  (score           [this term text] "Score this text in similarity")
+  (rank            [this term text] "Rank sentences in this text"))
 
 
-(defrecord SeededContextSearcher [seedtexts get-sentences tokenize pos-tag])
+(defrecord SeededContextSearcher [seeded-score-words seeded-text get-sentences tokenize pos-tag])
+
 
 (extend-protocol SeededSearcher SeededContextSearcher
 
@@ -24,17 +26,26 @@
     (let [get-sentences (:get-sentences this)
           tokenizer (:tokenize this)
           pos-tagger (:pos-tag this)
-          seedtexts (:seedtexts this)]
-      (swap! seedtexts concat [seedtext])))
+          seeded-text (:seeded-text this)]
+      (swap! seeded-text concat [seedtext])))
+
+  (add-score-words
+    [this words]
+    (let [seeded-score-words (:seeded-score-words this)]
+      (swap! seeded-score-words merge words)))
 
   (score
     [this term text]
     (let [get-sentences (:get-sentences this)
           tokenizer (:tokenize this)
           pos-tagger (:pos-tag this)
-          seedtexts (:seedtexts this)
-          score-words (into {}
-                            (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seedtexts))]
+          seeded-text (:seeded-text this)
+          seeded-score-words (:seeded-score-words this)
+          score-words (merge
+                        @seeded-score-words
+                        (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text))
+                        (memoized-get-scored-terms text term get-sentences tokenizer pos-tagger))]
+      (println score-words)
       (core/score-text text score-words get-sentences tokenizer)))
 
   (rank
@@ -42,21 +53,29 @@
     (let [get-sentences (:get-sentences this)
           tokenizer (:tokenize this)
           pos-tagger (:pos-tag this)
-          seedtexts (:seedtexts this)
-          score-words (into {}
-                            (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seedtexts))]
+          seeded-text (:seeded-text this)
+          seeded-score-words (:seeded-score-words this)
+          score-words (merge
+                        @seeded-score-words
+                        (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text))
+                        (memoized-get-scored-terms text term get-sentences tokenizer pos-tagger))]
+      (println score-words)
       (reverse (sort-by second (core/score-sentences text score-words get-sentences tokenizer))))))
+
 
 
 (defn make-seeded-context-searcher
   "Generate a new Seeded Context Searcher using the seed text and given models.
   3 models are required, a sentence detector model, a tokenizing model and a
   pos-tagging model."
-  [seedtext smodel tmodel pmodel]
+  [smodel tmodel pmodel & seeds]
   (let [get-sentences (nlp/make-sentence-detector smodel)
         tokenizer (nlp/make-tokenizer tmodel)
-        pos-tagger (nlp/make-pos-tagger pmodel)]
-    (SeededContextSearcher. (if (vector? seedtext) (atom seedtext) (atom [seedtext])) get-sentences tokenizer pos-tagger)))
+        pos-tagger (nlp/make-pos-tagger pmodel)
+        seed-words (if (:seed-words (first seeds)) (:seed-words (first seeds)) {})
+        seed-text (if (:seed-text (first seeds)) [(:seed-text (first seeds))] [])]
+    (println (:seed-text seeds))
+    (SeededContextSearcher. (atom seed-words) (atom seed-text) get-sentences tokenizer pos-tagger)))
 
 
 (comment

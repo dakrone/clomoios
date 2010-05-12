@@ -43,8 +43,7 @@
           seeded-score-words (:seeded-score-words this)
           score-words (merge
                         @seeded-score-words
-                        (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text))
-                        (memoized-get-scored-terms text term get-sentences tokenizer pos-tagger))]
+                        (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))]
       (core/score-text text score-words get-sentences tokenizer)))
 
   (rank
@@ -56,8 +55,7 @@
           seeded-score-words (:seeded-score-words this)
           score-words (merge
                         @seeded-score-words
-                        (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text))
-                        (memoized-get-scored-terms text term get-sentences tokenizer pos-tagger))]
+                        (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))]
       (reverse (sort-by second (core/score-sentences text score-words get-sentences tokenizer))))))
 
 
@@ -72,16 +70,16 @@
         pos-tagger (nlp/make-pos-tagger pmodel)
         seed-words (if (:seed-words (first seeds)) (:seed-words (first seeds)) {})
         seed-text (if (:seed-text (first seeds)) [(:seed-text (first seeds))] [])]
-    (println (:seed-text seeds))
     (SeededContextSearcher. (atom seed-words) (atom seed-text) get-sentences tokenizer pos-tagger)))
 
 
 (comment
 
   (use 'clomoios.seededcontextsearcher)
-  (def foo (make-seeded-context-searcher "The quick brown fox jumped over the sleeping lazy dog biscuit."  "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz"))
+  (def foo (make-seeded-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz"))
   (rank foo "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog.")
   (add-seed foo "I have a pet fox.")
+  (add-score-words foo {"dog" 1/2})
   (rank foo "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog.")
 
 )

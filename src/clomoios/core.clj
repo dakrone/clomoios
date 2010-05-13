@@ -88,24 +88,24 @@
 (defn score-sentence
   "Given a sentence and a map of words & their scores, return the score
   of the sentence."
-  [sentence score-words tokenizer]
+  [sentence score-map tokenizer]
   (let [tokens (tokenizer sentence)]
-    (reduce + (map #(get score-words % 0) tokens))))
+    (reduce + (map #(get score-map % 0) tokens))))
 
 
 (defn score-sentences
   "Given a text and a map of words/scores. Return a list of sentences
   and their scores."
-  [text score-words sentence-finder tokenizer]
+  [text score-map sentence-finder tokenizer]
   (let [sentences (sentence-finder text)]
     (for [s sentences]
-      [s (score-sentence s score-words tokenizer)])))
+      [s (score-sentence s score-map tokenizer)])))
 
 
 (defn score-text
   "Score a block of text, given a map of score-words."
-  [text score-words sentence-finder tokenizer]
+  [text score-map sentence-finder tokenizer]
   (let [sentences (sentence-finder text)]
-    (reduce + (map #(score-sentence % score-words tokenizer) sentences))))
+    (reduce + (map #(score-sentence % score-map tokenizer) sentences))))
 
 

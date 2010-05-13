@@ -8,10 +8,23 @@
 (def memoized-get-scored-terms (memoize core/get-scored-terms))
 
 
+(defn- get-terms
+  "Given a SeededSearcher and a term, return a map of the scored words."
+  [searcher term]
+  (let [get-sentences (:get-sentences searcher)
+        tokenizer (:tokenize searcher)
+        pos-tagger (:pos-tag searcher)
+        seeded-text (:seeded-text searcher)
+        seeded-score-words (:seeded-score-words searcher)]
+    (merge @seeded-score-words
+           (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))))
+
+
 (defprotocol SeededSearcher
   "An interface for searching using seeded text"
   (add-seed        [this seedtext]  "Add seed text to this searcher")
   (add-score-words [this words]     "Add score words to this searcher")
+  (score-words     [this term]      "Get the computed score words for a given term")
   (score           [this term text] "Score this text in similarity")
   (rank            [this term text] "Rank sentences in this text"))
 
@@ -34,29 +47,21 @@
     (let [seeded-score-words (:seeded-score-words this)]
       (swap! seeded-score-words merge words)))
 
+  (score-words
+    [this term]
+    (get-terms this term))
+
   (score
     [this term text]
     (let [get-sentences (:get-sentences this)
-          tokenizer (:tokenize this)
-          pos-tagger (:pos-tag this)
-          seeded-text (:seeded-text this)
-          seeded-score-words (:seeded-score-words this)
-          score-words (merge
-                        @seeded-score-words
-                        (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))]
-      (core/score-text text score-words get-sentences tokenizer)))
+          tokenizer (:tokenize this)]
+      (core/score-text text (get-terms this term) get-sentences tokenizer)))
 
   (rank
     [this term text]
     (let [get-sentences (:get-sentences this)
-          tokenizer (:tokenize this)
-          pos-tagger (:pos-tag this)
-          seeded-text (:seeded-text this)
-          seeded-score-words (:seeded-score-words this)
-          score-words (merge
-                        @seeded-score-words
-                        (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))]
-      (reverse (sort-by second (core/score-sentences text score-words get-sentences tokenizer))))))
+          tokenizer (:tokenize this)]
+      (reverse (sort-by second (core/score-sentences text (get-terms this term) get-sentences tokenizer))))))
 
 
 

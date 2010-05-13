@@ -9,7 +9,9 @@ Loosely based on this blog post: [Context searching using Clojure-OpenNLP](http:
 
 ## Usage
 
-At the moment, see the comment at the bottom of `src/clomoios/contextsearcher.clj` and `src/clomoios/seededcontextsearcher.clj`
+At the moment, see the tests in the test directory and the
+comments at the bottom of `src/clomoios/contextsearcher.clj` and
+`src/clomoios/seededcontextsearcher.clj`
 
 More to follow
 

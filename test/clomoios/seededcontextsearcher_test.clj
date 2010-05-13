@@ -45,3 +45,7 @@
            (is (= (rank scs "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog.")
                   '(["I like him more than my dog." 2] ["He's my favorite pet. " 1] ["I own a brown fox. " 0] )))))
 
+(deftest seeded-context-searcher-get-words-test
+         (let [scs (make-seeded-context-searcher "models/EnglishSD.bin.gz" "models/EnglishTok.bin.gz" "models/tag.bin.gz" {:seed-words {"pet" 1} :seed-text "I have a tame fox."})]
+           (is (= (score-words scs "fox")
+                  {"pet" 1 "fox" 1 "have" 1/2}))))

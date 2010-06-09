@@ -9,59 +9,75 @@
 
 
 (defn- get-terms
-  "Given a SeededSearcher and a term, return a map of the scored words."
-  [searcher term]
-  (let [get-sentences (:get-sentences searcher)
-        tokenizer (:tokenize searcher)
-        pos-tagger (:pos-tag searcher)
-        seeded-text (:seeded-text searcher)
-        seeded-score-words (:seeded-score-words searcher)]
-    (merge @seeded-score-words
-           (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))))
+  " "
+  ([searcher term]
+   (let [get-sentences (:get-sentences searcher)
+         tokenizer (:tokenize searcher)
+         pos-tagger (:pos-tag searcher)
+         seeded-text (:seeded-text searcher)
+         seeded-score-words (:seeded-score-words searcher)]
+     (merge @seeded-score-words
+            (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))))
+  ([searcher term text]
+   (let [get-sentences (:get-sentences searcher)
+         tokenizer (:tokenize searcher)
+         pos-tagger (:pos-tag searcher)
+         seeded-text (:seeded-text searcher)
+         seeded-score-words (:seeded-score-words searcher)]
+     (merge @seeded-score-words
+            (core/get-scored-terms text term get-sentences tokenizer pos-tagger)
+            (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text))))))
 
 
 (defprotocol SeededSearcher
   "An interface for searching using seeded text"
   (add-seed        [this seedtext]  "Add seed text to this searcher")
   (add-score-words [this words]     "Add score words to this searcher")
-  (score-words     [this term]      "Get the computed score words for a given term")
+  (score-words     [this term]      "Get the computer score words for a given term"
+                   [this term text] "Get the computed score words for a given term and text")
   (score           [this term text] "Score this text in similarity")
   (rank            [this term text] "Rank sentences in this text"))
 
 
 (defrecord SeededContextSearcher [seeded-score-words seeded-text get-sentences tokenize pos-tag])
 
+; I switched from deftype to extend so I could use mutli-arity functions.
+(extend SeededContextSearcher SeededSearcher
+  {:add-seed
+   (fn
+     [this seedtext]
+     (let [get-sentences (:get-sentences this)
+           tokenizer (:tokenize this)
+           pos-tagger (:pos-tag this)
+           seeded-text (:seeded-text this)]
+       (swap! seeded-text concat [seedtext])))
 
-(extend-protocol SeededSearcher SeededContextSearcher
+   :add-score-words
+   (fn
+     [this words]
+     (let [seeded-score-words (:seeded-score-words this)]
+       (swap! seeded-score-words merge words)))
 
-  (add-seed
-    [this seedtext]
-    (let [get-sentences (:get-sentences this)
-          tokenizer (:tokenize this)
-          pos-tagger (:pos-tag this)
-          seeded-text (:seeded-text this)]
-      (swap! seeded-text concat [seedtext])))
+   :score-words
+   (fn
+     ([this term]
+       (get-terms this term))
+     ([this term text]
+       (get-terms this term text)))
 
-  (add-score-words
-    [this words]
-    (let [seeded-score-words (:seeded-score-words this)]
-      (swap! seeded-score-words merge words)))
+   :score
+   (fn
+     [this term text]
+     (let [get-sentences (:get-sentences this)
+           tokenizer (:tokenize this)]
+       (core/score-text text (get-terms this term text) get-sentences tokenizer)))
 
-  (score-words
-    [this term]
-    (get-terms this term))
-
-  (score
-    [this term text]
-    (let [get-sentences (:get-sentences this)
-          tokenizer (:tokenize this)]
-      (core/score-text text (get-terms this term) get-sentences tokenizer)))
-
-  (rank
-    [this term text]
-    (let [get-sentences (:get-sentences this)
-          tokenizer (:tokenize this)]
-      (reverse (sort-by second (core/score-sentences text (get-terms this term) get-sentences tokenizer))))))
+   :rank
+   (fn
+     [this term text]
+     (let [get-sentences (:get-sentences this)
+           tokenizer (:tokenize this)]
+       (reverse (sort-by second (core/score-sentences text (get-terms this term text) get-sentences tokenizer)))))})
 
 
 

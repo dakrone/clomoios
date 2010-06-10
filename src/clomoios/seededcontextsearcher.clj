@@ -19,14 +19,12 @@
      (merge @seeded-score-words
             (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))))
   ([searcher term text]
-   (let [get-sentences (:get-sentences searcher)
+   (let [non-tech-terms (get-terms searcher term)
+         get-sentences (:get-sentences searcher)
          tokenizer (:tokenize searcher)
-         pos-tagger (:pos-tag searcher)
-         seeded-text (:seeded-text searcher)
-         seeded-score-words (:seeded-score-words searcher)]
-     (merge @seeded-score-words
-            (core/get-scored-terms text term get-sentences tokenizer pos-tagger)
-            (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text))))))
+         pos-tagger (:pos-tag searcher)]
+     (merge (core/get-scored-terms text term get-sentences tokenizer pos-tagger)
+            non-tech-terms))))
 
 
 (defprotocol SeededSearcher

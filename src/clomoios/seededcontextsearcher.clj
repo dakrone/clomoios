@@ -42,7 +42,7 @@
 ; I switched from deftype to extend so I could use mutli-arity functions.
 (extend SeededContextSearcher SeededSearcher
   {:add-seed
-   (fn
+   (fn add-seed
      [this seedtext]
      (let [get-sentences (:get-sentences this)
            tokenizer (:tokenize this)
@@ -51,27 +51,27 @@
        (swap! seeded-text concat [seedtext])))
 
    :add-score-words
-   (fn
+   (fn add-score-words
      [this words]
      (let [seeded-score-words (:seeded-score-words this)]
        (swap! seeded-score-words merge words)))
 
    :score-words
-   (fn
+   (fn score-words
      ([this term]
        (get-terms this term))
      ([this term text]
        (get-terms this term text)))
 
    :score
-   (fn
+   (fn score
      [this term text]
      (let [get-sentences (:get-sentences this)
            tokenizer (:tokenize this)]
        (core/score-text text (get-terms this term text) get-sentences tokenizer)))
 
    :rank
-   (fn
+   (fn rank
      [this term text]
      (let [get-sentences (:get-sentences this)
            tokenizer (:tokenize this)]

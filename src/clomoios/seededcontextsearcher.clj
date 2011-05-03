@@ -3,79 +3,91 @@
   (:require [opennlp.nlp :as nlp]))
 
 
-; Memoize this, since we will be getting scored terms quite often with the same
-; seeded text. This way it won't be recalculated unless the seed changes
+;; Memoize this, since we will be getting scored terms quite often with the same
+;; seeded text. This way it won't be recalculated unless the seed changes
 (def memoized-get-scored-terms (memoize core/get-scored-terms))
 
 
 (defn- get-terms
   " "
   ([searcher term]
-   (let [get-sentences (:get-sentences searcher)
-         tokenizer (:tokenize searcher)
-         pos-tagger (:pos-tag searcher)
-         seeded-text (:seeded-text searcher)
-         seeded-score-words (:seeded-score-words searcher)]
-     (merge @seeded-score-words
-            (reduce merge (map #(memoized-get-scored-terms % term get-sentences tokenizer pos-tagger) @seeded-text)))))
+     (let [get-sentences (:get-sentences searcher)
+           tokenizer (:tokenize searcher)
+           pos-tagger (:pos-tag searcher)
+           seeded-text (:seeded-text searcher)
+           seeded-score-words (:seeded-score-words searcher)]
+       (merge @seeded-score-words
+              (reduce merge
+                      (map #(memoized-get-scored-terms %
+                                                       term
+                                                       get-sentences
+                                                       tokenizer
+                                                       pos-tagger)
+                           @seeded-text)))))
   ([searcher term text]
-   (let [non-tech-terms (get-terms searcher term)
-         get-sentences (:get-sentences searcher)
-         tokenizer (:tokenize searcher)
-         pos-tagger (:pos-tag searcher)]
-     (merge (core/get-scored-terms text term get-sentences tokenizer pos-tagger)
-            non-tech-terms))))
+     (let [non-tech-terms (get-terms searcher term)
+           get-sentences (:get-sentences searcher)
+           tokenizer (:tokenize searcher)
+           pos-tagger (:pos-tag searcher)]
+       (merge (core/get-scored-terms text term get-sentences
+                                     tokenizer pos-tagger)
+              non-tech-terms))))
 
 
 (defprotocol SeededSearcher
   "An interface for searching using seeded text"
   (add-seed        [this seedtext]  "Add seed text to this searcher")
   (add-score-words [this words]     "Add score words to this searcher")
-  (score-words     [this term]      "Get the computer score words for a given term"
-                   [this term text] "Get the computed score words for a given term and text")
+  (score-words     [this term] [this term text] "Get the computed score words.")
   (score           [this term text] "Score this text in similarity")
   (rank            [this term text] "Rank sentences in this text"))
 
 
-(defrecord SeededContextSearcher [seeded-score-words seeded-text get-sentences tokenize pos-tag])
+(defrecord SeededContextSearcher
+    [seeded-score-words seeded-text get-sentences tokenize pos-tag])
 
-; I switched from deftype to extend so I could use mutli-arity functions.
+;; I switched from deftype to extend so I could use mutli-arity functions.
 (extend SeededContextSearcher SeededSearcher
-  {:add-seed
-   (fn add-seed
-     [this seedtext]
-     (let [get-sentences (:get-sentences this)
-           tokenizer (:tokenize this)
-           pos-tagger (:pos-tag this)
-           seeded-text (:seeded-text this)]
-       (swap! seeded-text concat [seedtext])))
+        {:add-seed
+         (fn add-seed
+           [this seedtext]
+           (let [get-sentences (:get-sentences this)
+                 tokenizer (:tokenize this)
+                 pos-tagger (:pos-tag this)
+                 seeded-text (:seeded-text this)]
+             (swap! seeded-text concat [seedtext])))
 
-   :add-score-words
-   (fn add-score-words
-     [this words]
-     (let [seeded-score-words (:seeded-score-words this)]
-       (swap! seeded-score-words merge words)))
+         :add-score-words
+         (fn add-score-words
+           [this words]
+           (let [seeded-score-words (:seeded-score-words this)]
+             (swap! seeded-score-words merge words)))
 
-   :score-words
-   (fn score-words
-     ([this term]
-       (get-terms this term))
-     ([this term text]
-       (get-terms this term text)))
+         :score-words
+         (fn score-words
+           ([this term]
+              (get-terms this term))
+           ([this term text]
+              (get-terms this term text)))
 
-   :score
-   (fn score
-     [this term text]
-     (let [get-sentences (:get-sentences this)
-           tokenizer (:tokenize this)]
-       (core/score-text text (get-terms this term text) get-sentences tokenizer)))
+         :score
+         (fn score
+           [this term text]
+           (let [get-sentences (:get-sentences this)
+                 tokenizer (:tokenize this)]
+             (core/score-text text (get-terms this term text)
+                              get-sentences tokenizer)))
 
-   :rank
-   (fn rank
-     [this term text]
-     (let [get-sentences (:get-sentences this)
-           tokenizer (:tokenize this)]
-       (reverse (sort-by second (core/score-sentences text (get-terms this term text) get-sentences tokenizer)))))})
+         :rank
+         (fn rank
+           [this term text]
+           (let [get-sentences (:get-sentences this)
+                 tokenizer (:tokenize this)]
+             (reverse
+              (sort-by second
+                       (core/score-sentences text
+                                             (get-terms this term text)
+                                             get-sentences tokenizer)))))})
 
 
 
@@ -101,4 +113,4 @@
   (add-score-words foo {"dog" 1/2})
   (rank foo "fox" "I own a brown fox. He's my favorite pet. I like him more than my dog.")
 
-)
+  )

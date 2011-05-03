@@ -26,11 +26,11 @@
   term.  Base score is optional and is 1 by default.  Case sensitive."
   ([term words] (score-words term words 1))
   ([term words base]
-   (let [iwords (indexed words)
-         iterms (map first (filter (fn [e] (= (second e) term)) iwords))]
-     (if (= 0 (count iterms))
-       (map #(vector % 0) words)
-       (map #(vector (second %) (score-word % iterms base)) iwords)))))
+     (let [iwords (indexed words)
+           iterms (map first (filter (fn [e] (= (second e) term)) iwords))]
+       (if (= 0 (count iterms))
+         (map #(vector % 0) words)
+         (map #(vector (second %) (score-word % iterms base)) iwords)))))
 
 
 (defn- nv-filter
@@ -70,7 +70,12 @@
   "Given a sequence of weighted sentences, return a map of new terms
   to be used for searching."
   [weighted-sentences]
-  (into {} (map vec (partition 2 (flatten (map #(filter (fn [pair] (not= 0 (second pair))) %) weighted-sentences))))))
+  (into {}
+        (map vec
+             (partition 2
+                        (flatten (map #(filter (fn [pair]
+                                                 (not= 0 (second pair))) %)
+                                      weighted-sentences))))))
 
 
 (defn get-scored-terms
